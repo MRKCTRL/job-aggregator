@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Search</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css')}}">
+</head>
+<body>
+    <h1> Job Search</h1>
+    <form method="POST" action="">
+        <input type="text" name="keyword" placeholder="Enter job title or keyword" required>
+        <input type="text" name="location" placeholder="Enter location" required>
+        <button type="submit"> Search Jobs</button>
+    </form>
+    {% if jobs %}
+    <h2> Job Listings</h2>
+    <ul>
+        {% for job in jobs %}
+        <li>
+            <h3>{{ job.title }}</h3>
+            <p><strong>Company:</strong>{{ job.company}}</p>
+            <p><strong> Location</strong>{{ job.location }}</p>
+            <a href="{{ job.url }}" targets=""_blank>Apply Now</a>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p>No Jobs Found. try a different search</p>
+    {% endif %}
+</body>
+</html>
