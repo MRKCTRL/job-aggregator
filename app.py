@@ -39,4 +39,22 @@ def fetch_linkedin_jobs(keyword, location):
     return []
 
 
-@app()
+@app("/", methods=["GET", "POST"])
+def index():
+    jobs = []
+    if request.method == "POST":
+        keyword = request.form.get("keyword")
+        location = request.form.get("location")
+        
+        
+        indeed_jobs = fetch_indeed_jobs(keyword, location)
+        linkedin_jobs = fetch_linkedin_jobs(keyword, location)
+        
+        
+        jobs = indeed_jobs + linkedin_jobs 
+        
+        
+    return render_template("index.html", jobs=jobs)
+
+if __name__ == "__main__":
+    app.main(debug=True)
