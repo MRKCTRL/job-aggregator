@@ -27,6 +27,18 @@
     </ul>
     {% else %}
     <p>No Jobs Found. try a different search</p>
+    
+    {% if total_pages  > 1 %}
+    <div class"pagination">
+        {% if page %}
+        <a href="{{ url_for('index', page=page-1 ) }}">Previous</a>
+        {% endif %}
+        <span>Page {{ page }} of {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="{{ url_for('index', page=page+1) }}">Next</a>
+        
+        {% endif %}
+    </div>
     {% endif %}
 </body>
 </html>
