@@ -7,10 +7,26 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css')}}">
 </head>
 <body>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+<div class="messages">
+{% for category, message in messages %}
+<div class="alert alert-{{ category }}"></div>
+{% endfor %}
+</div>
+{% endif %}
+{% endwith %}
     <h1> Job Search</h1>
     <form method="POST" action="">
         <input type="text" name="keyword" placeholder="Enter job title or keyword" required>
         <input type="text" name="location" placeholder="Enter location" required>
+        <select name="job_name">
+            <option value="">All Job Types</option>
+            <option value="">Full-Time</option>
+            <option value="">Part-Time</option>
+            <option value="">Contract</option>
+        </select>
+        <input type="number" name="min_salary" placeholder="Min Salary">
         <button type="submit"> Search Jobs</button>
     </form>
     {% if jobs %}

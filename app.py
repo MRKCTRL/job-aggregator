@@ -5,17 +5,25 @@ import requests
 from math import ceil 
 import re
 
-app=Flask(__name__)
-app.secret_key = ""
+from dotenv import load_dotenv
+import os
 
-INDEED_API_KEY = ""
-LINKEDIN_API_KEY = ""
+
+load_dotenv()
+
+
+app=Flask(__name__)
+app.secret_key = os.get("")
+
+
+INDEED_API_KEY = os.getenv("")
+LINKEDIN_API_KEY = os.getenv("")
+GLASSDOOR_API_KEY=os.getenv("")
+GLASSDOOR_PARTNER_ID=""
+
 
 INDEED_API_URL = ""
 LINKEDIN_API_URL = ""
-
-GLASSDOOR_API_KEY=""
-GLASSDOOR_PARTNER_ID=""
 GLASSDOOR_API_URL=""
 
 JOBS_PER_PAGE= 10
@@ -24,6 +32,8 @@ class JobSearchForm(FlaskForm):
     keyword= StringField("Keyword", [validators.InputRequired(), validators.Regexp(r"^[a-zA-Z0-9\s]+$")])
     loation = StringField("Location", [validators.InputRequired(), validators.Regexp(r"^[a-zA-Z\s,]+$")])
 
+
+        
 
 def fetch_indeed_jobs(keyword, location):
     params= {
@@ -78,6 +88,15 @@ def validate_location(location):
     return bool(re.match(r"^[a-zA-Z\s,]+$", location))
 
 
+def filter_jobs(jobs, job_type, min_salary):
+    filtered_jobs=[]
+    for job in jobs:
+        if job_type and job.get("job_type") != job_type:
+            continue
+        if min_salary and job.get("salary", 0) < min_salary:
+            continue
+        filtered_jobs.append(job)
+    return filtered_jobs
 
 @app("/", methods=["GET", "POST"])
 def index():
@@ -88,12 +107,27 @@ def index():
         # still need to do thios.
         keyword = sanitaze_input(form.keyword.data)
         location = sanitaze_input(form.loation.data)
-        jobs=fetch_indeed_jobs + fetch_linkedin_jobs + fetch_glassdoor_jobs(keyword, location)
+        job=fetch_indeed_jobs + fetch_linkedin_jobs + fetch_glassdoor_jobs(keyword, location)
         
     if request.method == "POST":
         keyword = request.form.get("keyword").strip()
         location = request.form.get("location").strip()
+        job_type=request.form.get("job_type")
+        min_salary=request.form.get("min_salary", type=float)
         
+        if not keyword or not location:
+            flash("please enter both a keyword and location", "error")
+        else:
+            indeed_jobs = fetch_indeed_jobs(keyword, location)
+            linkedin_jobs = fetch_linkedin_jobs(keyword, location)
+            glassdoor_jobs = fetch_glassdoor_jobs(keyword, location)
+            
+            jobs = indeed_jobs + linkedin_jobs + glassdoor_jobs
+            jobs= filter_jobs(jobs, job_type, min_salary)
+            
+            if not jobs: 
+                flash("no jobs found. Try a different search.", "info")
+            
         if not validate_keyword(keyword):
             flash("invalid keyword. Only aplhanumeric characters and spaces are allowed", "error")
         elif not validate_location(location):
@@ -103,19 +137,26 @@ def index():
             location = sanitaze_input(location)
         
         
-        indeed_jobs = fetch_indeed_jobs(keyword, location)
-        linkedin_jobs = fetch_linkedin_jobs(keyword, location)
-        glassdoor_jobs = fetch_glassdoor_jobs(keyword, location)
         
         
         jobs = indeed_jobs + linkedin_jobs + glassdoor_jobs
+        jobs= filter_jobs(jobs, job_type, min_salary)
         
     
     total_jobs = len(jobs)
     total_pages = ceil(total_jobs / JOBS_PER_PAGE)
-    start = (page - 1) * JOBS_PER_PAGE
-    end = start + JOBS_PER_PAGE 
-    jobs_to_display=jobs[start:end]  
+    # start = (page - 1) * JOBS_PER_PAGE
+    # end = start + JOBS_PER_PAGE 
+    # jobs_to_display=jobs[start:end]  
+    
+    if page < 1:
+        page = 1
+    elif page > total_pages and total_pages > 0:
+        page = total_pages
+        
+        start = (page - 1) * JOBS_PER_PAGE
+        end =start + JOBS_PER_PAGE
+        jobs_to_display = job[start:end]
         
     return render_template("index.html", jobs=jobs_to_display, page=page, total_pages=total_pages)
 
