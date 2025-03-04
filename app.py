@@ -2,11 +2,30 @@ from flask import Flask, render_template, request, flash, escape, make_response
 from flask_wtf import FlaskForm
 from wtfforms import StringField, validators
 import requests
+
 from math import ceil 
+
 import re
 
 from dotenv import load_dotenv
 import os
+
+import time
+
+
+import logging
+
+
+
+logging.basicConfig(
+    level=logging(level=logging.INFO,
+                  format="%(asctime)s - %(levelname)s - %(message)s",
+                  handlers=[
+                      logging.FIleHandler("app.log"),
+                      logging.StreamHandler()
+                  ]
+)
+
 
 
 load_dotenv()
@@ -36,20 +55,28 @@ class JobSearchForm(FlaskForm):
         
 
 def fetch_indeed_jobs(keyword, location):
-    params= {
-        "publisher":INDEED_API_KEY ,
-        "q": keyword ,
-        "l": location,
-        "format":"json",
-         "v":"2" ,    
-    }
-    response = requests.get(INDEED_API_URL, params=params)
-    if response.status_code == 200:
+    time.sleep(1)
+    try:
+        params= {
+            "publisher":INDEED_API_KEY ,
+            "q": keyword ,
+            "l": location,
+            "format":"json",
+                "v":"2" ,    
+        }
+        response = requests.get(INDEED_API_URL, params=params, timeout=10)
+        response.raise_for_status()
         return response.json().get("results", [])
-    return []
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error fetching jobs from Indeed: {str(e)}")
+        flash(f"Error fetching jons from Indeed: {str(e)}", "error")
+        # if response.status_code == 200:
+            # return response.json().get("results", [])
+        return []
 
 
 def fetch_linkedin_jobs(keyword, location):
+    time.sleep(1)
     headers = {
         "Authorization" : f"Bearer{LINKEDIN_API_KEY}"
     } 
@@ -63,6 +90,7 @@ def fetch_linkedin_jobs(keyword, location):
     return []
 
 def fetch_glassdoor_jobs(keyword, location):
+    time.sleep(1)
     params = {
         "v": "1",
         "t.p" : GLASSDOOR_PARTNER_ID,
