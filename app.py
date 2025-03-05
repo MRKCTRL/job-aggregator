@@ -1,6 +1,13 @@
-from flask import Flask, render_template, request, flash, escape, make_response
+from flask import Flask, render_template, request, flash, escape, make_response, session
 from flask_wtf import FlaskForm
 from wtfforms import StringField, validators
+from flask_babel import Babel, _
+from flask_sqlalchemy import SQLAlchemy
+
+
+from flask_login import LoginManager, UserMixib, login_user, login_required, logout_user, current_user
+
+
 import requests
 
 from math import ceil 
@@ -14,6 +21,9 @@ import time
 
 
 import logging
+
+from celery import Celery
+
 
 
 
@@ -33,6 +43,20 @@ load_dotenv()
 
 app=Flask(__name__)
 app.secret_key = os.get("")
+app.config["BABEL_DEFAULT_LOCALE"] = "en"
+app.config["BABEL_TRANSLATION_DIRECTORIES"] = "translations"
+app.config["SQLALCHEMY_DATBASE_URI"] = "postgresql://user:password@localhost/jobsearch"
+
+
+app.confgi["CACHE_TYPE"] = "RedisCache"
+app.config["CACHE_REDIS_URL"] ="redis://localhost:6379/0"
+
+cache(app)
+bable= Bable(app)
+db = SQLAlxhemy(app)
+
+# babel code 
+
 
 
 INDEED_API_KEY = os.getenv("")
@@ -52,8 +76,70 @@ class JobSearchForm(FlaskForm):
     loation = StringField("Location", [validators.InputRequired(), validators.Regexp(r"^[a-zA-Z\s,]+$")])
 
 
-        
+class User(UserMixin):
+    pass 
+    #Todo
 
+class User(db.model):
+    id= db.Column(db.Integer, primary_key=True)
+    email=db.Column(db.String(120), unique=True, nullable=False)
+    
+class Job(db.Model):
+    id=column(db.Integer, primary_key=True)
+    title= db.Column(db.String(120), nullable=False)
+    company=db.Column(db.String(120), nullable=False)
+    location=db.Column(db.String(120), nullable=False)
+
+
+
+
+@babel.localeselector
+def get_locale():
+    return session.get("language", request.accept_languages.best_match(["en", "es", "fr"])) 
+       
+
+
+@app.route("/set_language/<language>")
+def set_language(language):
+    session["language"] = language 
+    return redirect(url_for("index"))
+
+def make_celery(app):
+    celery = Celery(app.import_name, broker="edis://localhost:6379/0")
+    celery.conf.update(app.config)
+    return celery 
+    
+celery = make_celery(app)
+
+
+@celery.task 
+def  send_job_alert(email, jobs):
+    # send emails with jobs alert
+    pass
+
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    # load user from data base
+    pass
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    pass 
+    # TO do handle the logic
+
+@app.rout("/logout")
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for("index"))
+
+
+
+
+@cache.cached(timeout=300)
 def fetch_indeed_jobs(keyword, location):
     time.sleep(1)
     try:
@@ -74,7 +160,7 @@ def fetch_indeed_jobs(keyword, location):
             # return response.json().get("results", [])
         return []
 
-
+@cache.cached(timeout=300)
 def fetch_linkedin_jobs(keyword, location):
     time.sleep(1)
     headers = {
@@ -89,6 +175,7 @@ def fetch_linkedin_jobs(keyword, location):
         return response.json().get("elements", [])
     return []
 
+@cache.cached(timeout=300)
 def fetch_glassdoor_jobs(keyword, location):
     time.sleep(1)
     params = {
