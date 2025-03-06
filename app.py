@@ -1,12 +1,12 @@
-from flask import Flask, render_template, request, flash, escape, make_response, session
+from flask import Flask, render_template, request, flash, escape, make_response, session, url_for, redirect
 from flask_wtf import FlaskForm
 from wtfforms import StringField, validators
 from flask_babel import Babel, _
 from flask_sqlalchemy import SQLAlchemy
 
 
-from flask_login import LoginManager, UserMixib, login_user, login_required, logout_user, current_user
-
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
 
 import requests
 
@@ -53,9 +53,11 @@ app.config["CACHE_REDIS_URL"] ="redis://localhost:6379/0"
 
 cache(app)
 bable= Bable(app)
-db = SQLAlxhemy(app)
+db = SQLAlchemy(app)
 
 # babel code 
+login_manager=LoginManager(app)
+login_manager.login_view= 'login'
 
 
 
@@ -77,12 +79,23 @@ class JobSearchForm(FlaskForm):
 
 
 class User(UserMixin):
-    pass 
+    id = db.Column(db.Integer, primary_key=True)
+    email= db.Column(db.String(120), unique=True, nullable=False)
+    password_hash=db.Column(db.String(128), nullable=False)
+    
     #Todo
 
 class User(db.model):
     id= db.Column(db.Integer, primary_key=True)
     email=db.Column(db.String(120), unique=True, nullable=False)
+    
+    def set_password(self, password):
+        self.password_hash=generate_password_hash(password)
+        
+    
+    def check_password(self, password):
+        return check_password_hash(self.password, password)
+        
     
 class Job(db.Model):
     id=column(db.Integer, primary_key=True)
@@ -115,25 +128,38 @@ celery = make_celery(app)
 @celery.task 
 def  send_job_alert(email, jobs):
     # send emails with jobs alert
-    pass
+    # add a proper email service or smtp
+    print(f"Sending job alert to {e1mail} with {len(jobs)} jobs")
 
 
 
 @login_manager.user_loader
 def load_user(user_id):
     # load user from data base
-    pass
+    return User.query.get(int(user_id))
 
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    pass 
+    if request.method == "POST":
+        email = request.form.get("email")
+        password = request.form.get("password")
+        user= User.query.filter_by(email=email).first
+        
+        if user and user.check_password(password):
+            login_user(user)
+            flash("Logged in successfully!", "success")
+            return redirect(url_for("index"))
+        flash("Invalid email or password", "error")
+    return render_tempate("login.html")
+            
     # TO do handle the logic
 
-@app.rout("/logout")
+@app.route("/logout")
 @login_required
 def logout():
-    logout_user()
+    logout_user() 
+    flash("Logged out successfully!", "success")
     return redirect(url_for("index"))
 
 
@@ -288,4 +314,5 @@ def add_csp_header(response):
     return response
 
 if __name__ == "__main__":
-    app.main(debug=True)
+    db.create_all()
+    app.run(debug=True)
