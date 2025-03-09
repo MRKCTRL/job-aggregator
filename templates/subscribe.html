@@ -1,0 +1,21 @@
+<form method="POST" action="{{ url_for('subscribe') }}" class="mb-6">
+    <div class="mb-4">
+        <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+        <input type="email" id="email" name="email" required
+               class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+    </div>
+    <div class="mb-4">
+        <label for="keyword" class="block text-sm font-medium text-gray-700">Job Title</label>
+        <input type="text" id="keyword" name="keyword" required
+               class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+    </div>
+    <div class="mb-4">
+        <label for="location" class="block text-sm font-medium text-gray-700">Location</label>
+        <input type="text" id="location" name="location" required
+               class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+    </div>
+    <button type="submit"
+            class="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+        Subscribe to Job Alerts
+    </button>
+</form>

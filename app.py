@@ -25,6 +25,10 @@ import logging
 from celery import Celery
 
 
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail, Personalization, CustomArg, To, Subject, PlainTextContent, HtmlContent, TemplaateId
+
+
 
 
 logging.basicConfig(
@@ -46,6 +50,10 @@ app.secret_key = os.get("")
 app.config["BABEL_DEFAULT_LOCALE"] = "en"
 app.config["BABEL_TRANSLATION_DIRECTORIES"] = "translations"
 app.config["SQLALCHEMY_DATBASE_URI"] = "postgresql://user:password@localhost/jobsearch"
+
+
+SendGrid_API_KEY = os.getenv("SENDGRID_API_KEY")
+SENDGRID_FROM_EMAIL = os.getenv("SENDGRID_FROM_EMAIL")
 
 
 app.confgi["CACHE_TYPE"] = "RedisCache"
@@ -125,11 +133,47 @@ def make_celery(app):
 celery = make_celery(app)
 
 
+
+@app.route("/subscribe", methods=["POST"])
+def subscribe():
+    email=request.form.get("email")
+    keyword=request.form.get("keyword")
+    location=request.form.get("location")
+    
+    jobs=fetch_jobs(keyword, location)
+    send_job_alert(keyword, location)
+    
+    flash("You have successfuly subscribed to job alerts!", "success")
+    return redirect(url_for("index"))
+
 @celery.task 
 def  send_job_alert(email, jobs):
-    # send emails with jobs alert
-    # add a proper email service or smtp
-    print(f"Sending job alert to {e1mail} with {len(jobs)} jobs")
+    try:
+        subjects = "your Job Alerts"
+        
+        dynamic_data = {
+            "subject": subject, 
+            "jobs": jobs
+        }
+        message = Mail(
+            from_email=(SENDGRID_FROM_EMAIL),
+            to_emails=(email),
+            subjects=(subjects), 
+        )
+        message.template_id= "" #fill this 
+        
+        personalization=Personalization()
+        personalization.add_to(To(email))
+        personalization.dynamic_dyamic_template_data=dynamic_data
+        message.add_personalization(personalization)
+        
+        
+        sg=SendGridAPIClient(SENDGRID_API_KEY)
+        response= sg.send(message)
+        print(f"Job alert sent to{email}. Status code: {response.status_code}")
+    except Exception as e:
+        print(f"faiiled to send job alert to {email}: {str(e)}")
+    # print(f"Sending job alert to {e1mail} with {len(jobs)} jobs")
 
 
 
@@ -161,6 +205,23 @@ def logout():
     logout_user() 
     flash("Logged out successfully!", "success")
     return redirect(url_for("index"))
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        email = request.form.get("email")
+        password=request.form.get("passowrd")
+        confirm_password=request.form.get("confirm_password")
+        if password != confirm:
+            flash("Password do  not match")
+        else:
+            user=User(email=email)
+            user.set_password(password)
+            db.session.add(user)
+            db.session.commit()
+            flash("Account created successfully! Please Log in.", "success")
+            return redirect(url_for("login"))
+        return render_template("register.html")
 
 
 
